@@ -14,6 +14,6 @@ class PrimarySkill extends Model
 
     public function users()
     {
-        return $this->belongsToMany(User::class, 'primary_skill_users',  'primary_skill_id', 'user_id');
+        return $this->belongsToMany(User::class, 'primary_skill_users',  'primary_skill_id', 'user_id')->select('id', 'email', 'manage_by', 'reporting_to');
     }
 }

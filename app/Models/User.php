@@ -45,11 +45,11 @@ class User extends Authenticatable
     ];
     public function Resources()
     {
-        return $this->hasMany(Resource_Plan::class, 'user_id');
+        return $this->hasMany(Resource_Plan::class, 'user_id')->select('id', 'user_id', 'year', 'month', 'planned_hours');
     }
 
     public function Skills()
     {
-        return $this->belongsToMany(PrimarySkill::class, 'primary_skill_users', 'user_id', 'primary_skill_id')->withPivot('type');
+        return $this->belongsToMany(PrimarySkill::class, 'primary_skill_users', 'user_id', 'primary_skill_id');
     }
 }
