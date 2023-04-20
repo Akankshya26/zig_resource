@@ -3,63 +3,72 @@
 namespace App\Http\Controllers;
 
 use App\Models\PrimarySkill;
-use App\Models\Resource_plan;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class TestController extends Controller
 {
-    protected $skills = [];
     public function index(Request $request)
     {
 
         $request->validate([
-            'manage_by'      => 'required|string',
-            'reporting_to'   => 'required|string',
-            'year'           => 'required',
-            'month'          => 'required'
+            'manage_by'      => 'required|string|exists:users,manage_by',
+            'reporting_to'   => 'required|string|exists:users,reporting_to',
+            'year'           => 'required|digits:4|integer|min:1900|max:' . (date('Y') + 1),
+            'month'          => 'required|integer|between:1,12|size:2'
         ]);
-        $query = PrimarySkill::query();
+        $primarySkills = PrimarySkill::query();
 
         if ($request->manage_by && $request->reporting_to) {
-            $query->whereHas('users', function ($query) use ($request) {
+            $skill = $primarySkills->whereHas('users', function ($query) use ($request) {
                 $query->where('manage_by', $request->manage_by)
                     ->where('reporting_to', $request->reporting_to);
             });
         }
-        $query->with('users.Resources', function ($query) use ($request) {
-            $query->where('year', $request->year)
-                ->where('month', $request->month);
-            $fullTime = 0;
-            $partTime = 0;
+        $skills = $skill->get();
+        $totalFullTime  = 0;
+        $totalPartTime  = 0;
+        $totalAvailable = 0;
+        foreach ($skills as $key => $skill) {
+            $fullTime  = 0;
+            $partTime  = 0;
             $available = 0;
-            foreach ($query->get() as $user) {
-                if ($user->planned_hours > 120) {
+            $users = $skill->users()->get();
+            foreach ($users as $user) {
+                $resouce = $user->resources()
+                    ->where('year', $request->year)
+                    ->where('month', $request->month)->sum('planned_hours');
+                if ($resouce > 120) {
                     $fullTime =  $fullTime + 1;
-                } elseif ($user->planned_hours > 40 && $user->planned_hours < 119) {
+                    $totalFullTime = $totalFullTime + 1;
+                } elseif ($resouce > 40 && $resouce < 119) {
                     $partTime = $partTime + 1;
-                } elseif ($user->planned_hours > 0 && $user->planned_hours < 39) {
+                    $totalPartTime = $totalPartTime + 1;
+                } elseif ($resouce > 0 && $resouce < 39) {
+                    $totalAvailable = $totalAvailable + 1;
                     $available =  $available + 1;
                 }
+                //Count Total user with respect to skill
+                $totalSkillUser = $fullTime + $partTime + $available;
+                $total_user = $totalFullTime + $totalPartTime + $totalAvailable;
+                $skills[$key]['user_skills'] = [
+                    'fullTime'   => $fullTime,
+                    'partTime'   => $partTime,
+                    'available'  => $available,
+                    'total_user' =>  $totalSkillUser
+                ];
             }
-            $totalUser = $fullTime + $partTime + $available;
-            $this->skills = ['fullTime' => $fullTime, 'partTime' => $partTime, 'available' => $available, 'total_user' => $totalUser];
-        });
-        $data = $query->get();
-        /* Pagination */
-        $count = $query->count();
-        if ($request->page && $request->perPage) {
-            $page = $request->page;
-            $perPage = $request->perPage;
-            $query = $query->skip($perPage * ($page - 1))->take($perPage);
         }
-
+        //Count Skills
+        $count = $primarySkills->count();
         return response()->json([
-            'count_skill' => $count,
-            'user_count' => $this->skills,
-            'data' => $data
+            'count_skill'     => $count,
+            'user_count'      => $skills,
+            'totalFullTime'   => $totalFullTime,
+            'totalPartTime'   => $totalPartTime,
+            'totalAvailable'  => $totalAvailable,
+            'Total_user'      => $total_user
+
 
         ]);
     }
 }
-// }

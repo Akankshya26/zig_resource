@@ -11,6 +11,7 @@ class PrimarySkill extends Model
     use HasFactory, Uuids;
     protected $table = 'primary_skills';
 
+    /* belongsToMany realtionship with User Plan ofPrimary Skill*/
 
     public function users()
     {

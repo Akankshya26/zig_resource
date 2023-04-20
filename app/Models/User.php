@@ -43,12 +43,15 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
-    public function Resources()
-    {
-        return $this->hasMany(Resource_Plan::class, 'user_id')->select('id', 'user_id', 'year', 'month', 'planned_hours');
-    }
 
-    public function Skills()
+    /* Has many realtionship with Resource Plan of user*/
+    public function resources()
+    {
+        return $this->hasMany(ResourcePlan::class, 'user_id')->select('id', 'user_id', 'year', 'month', 'planned_hours');
+    }
+    /* belongsToMany realtionship with Primary Skill of user*/
+
+    public function skills()
     {
         return $this->belongsToMany(PrimarySkill::class, 'primary_skill_users', 'user_id', 'primary_skill_id');
     }
