@@ -18,4 +18,7 @@ use Illuminate\Support\Facades\Route;
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //     return $request->user();
 // });
+
+
+//open api for resource plan
 Route::post('getUser', [TestController::class, 'index']);

@@ -1,0 +1,85 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\PrimarySkill;
+use App\Models\Resource_plan;
+use App\Models\User;
+use Illuminate\Http\Request;
+
+class TestController extends Controller
+{
+    public function index(Request $request)
+    {
+
+        $request->validate([
+            'manage_by'      => 'required|string',
+            'reporting_to'   => 'required|string',
+            'year'           => 'required',
+            'month'          => 'required'
+        ]);
+
+        $PrimarySkills = PrimarySkill::query();
+
+        if ($request->manage_by && $request->reporting_to) {
+            $PrimarySkills =   $PrimarySkills->WhereHas('users', function ($query) use ($request) {
+                $query->where('manage_by', $request->manage_by)
+                    ->where('reporting_to', $request->reporting_to);
+            });
+        }
+        $getUser = $PrimarySkills->with(['users.resources'])->get();
+        $response = $getUser->map(function ($query) use ($request) {
+            return [
+                'skill_id' => $query->id,
+                'skill_name' => $query->name,
+                'count_user' => $query->users->map(function ($user) use ($request) {
+                    $resources_data = $user->resources->map(function ($resource) use ($request) {
+                        $total_planned_hours = 0;
+                        if ($resource->month == $request->month && $resource->year == $request->year) {
+                            $total_planned_hours = $resource->planned_hours;
+                            return $total_planned_hours;
+                        }
+                    });
+                    $total_planned_hours = (array_sum($resources_data->toArray()));
+                    $fullTime = 0;
+                    $partTime = 0;
+                    $available = 0;
+                    $totalFullTime  = 0;
+                    $totalPartTime  = 0;
+                    $totalAvailable = 0;
+                    if ($total_planned_hours > 120) {
+                        $fullTime =  $fullTime + 1;
+                        $totalFullTime = $totalFullTime + 1;
+                    } elseif ($total_planned_hours > 40 && $total_planned_hours < 119) {
+                        $partTime = $partTime + 1;
+                        $totalPartTime = $totalPartTime + 1;
+                    } elseif ($total_planned_hours > 0 && $total_planned_hours < 39) {
+                        $available =  $available + 1;
+                        $totalAvailable = $totalAvailable + 1;
+                    }
+                    $totalSkillUser = $fullTime + $partTime + $available;
+                    $resouces = [
+                        'hours'     => $total_planned_hours,
+                        'full_time' =>  $fullTime,
+                        'part_time' =>  $partTime,
+                        'available' => $available,
+                        'total'     => $totalSkillUser
+                    ];
+                    return [
+                        'user_id'   => $user->id,
+                        'user_name' => $user->name,
+                        'resources' => $resouces,
+                    ];
+                }),
+            ];
+        });
+
+
+        $count = $PrimarySkills->count();
+        return response()->json([
+            'count_skill' => $count,
+            'data' => $response,
+
+        ]);
+    }
+}

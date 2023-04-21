@@ -55,4 +55,10 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(PrimarySkill::class, 'primary_skill_users', 'user_id', 'primary_skill_id');
     }
+
+    //get full name of users
+    public function getFullNameAttribute()
+    {
+        return $this->name . ' ' . $this->last_name;
+    }
 }
